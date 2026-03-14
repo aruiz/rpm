@@ -1801,8 +1801,12 @@ static void set_cloexec(int fd)
 void rpmSetCloseOnExec(void)
 {
     const int min_fd = STDERR_FILENO; /* don't touch stdin/out/err */
-    int fd;
 
+#ifdef HAVE_CLOSE_RANGE
+    // Set CLOEXEC on all fds in a single syscall (Linux 5.11+, glibc 2.34+).
+    close_range(min_fd + 1, ~0U, CLOSE_RANGE_CLOEXEC);
+#else
+    int fd;
     DIR *dir = opendir("/proc/self/fd");
     if (dir == NULL) { /* /proc not available */
 	/* iterate over all possible fds, might be slow */
@@ -1832,6 +1836,5 @@ void rpmSetCloseOnExec(void)
     }
 
     closedir(dir);
-
-    return;
+#endif
 }
